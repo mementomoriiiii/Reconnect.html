@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Reconnect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF8F5;
+    --surface:#FFFFFF;
+    --surface-2:#F1EEE8;
+    --ink:#1B1B2F;
+    --ink-soft:#5B5A6E;
+    --line:#E6E2D9;
+    --coral:#FF6B54;
+    --coral-ink:#7A2E20;
+    --teal:#1F8A83;
+    --teal-soft:#E4F3F1;
+    --danger:#D64545;
+    --radius:20px;
+    --shadow:0 10px 30px -12px rgba(27,27,47,0.18);
+    color-scheme: light;
+  }
+  [data-theme="dark"]{
+    --bg:#14131F;
+    --surface:#1D1C2B;
+    --surface-2:#252436;
+    --ink:#F3F1EC;
+    --ink-soft:#A6A3BC;
+    --line:#33324A;
+    --coral:#FF7A61;
+    --coral-ink:#FFD9CE;
+    --teal:#4FC5BC;
+    --teal-soft:#1D3634;
+    --shadow:0 10px 30px -12px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--surface-2);
+    color:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{ font-family:'Fraunces',serif; font-weight:600; letter-spacing:-0.01em; }
+
+  /* Phone frame */
+  #phone{
+    width:390px;
+    height:844px;
+    max-height:96vh;
+    background:var(--bg);
+    border-radius:44px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.45), 0 0 0 10px #0b0b12;
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    transition:background .35s ease, color .35s ease;
+  }
+  .notch{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:120px; height:26px; background:#0b0b12; border-radius:0 0 16px 16px; z-index:50;
+  }
+  .screen{
+    flex:1; display:none; flex-direction:column; overflow:hidden; padding-top:26px;
+  }
+  .screen.active{ display:flex; }
+  .scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .scroll::-webkit-scrollbar{ width:0; }
+
+  .topbar{
+    padding:18px 22px 10px; display:flex; align-items:center; gap:12px; flex-shrink:0;
+  }
+  .topbar h2{ margin:0; font-size:21px; }
+  .backbtn{
+    width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--surface);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink); flex-shrink:0;
+  }
+  .container{ padding:20px 22px 90px; }
+
+  /* Buttons */
+  .btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:15px 20px; border-radius:16px; border:none; cursor:pointer;
+    font-family:'Inter'; font-weight:700; font-size:15px; width:100%;
+    transition:transform .15s ease, opacity .15s ease, box-shadow .15s ease;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn-primary{ background:var(--coral); color:#fff; box-shadow:0 8px 18px -8px rgba(255,107,84,.6); }
+  .btn-secondary{ background:var(--surface); color:var(--ink); border:1.5px solid var(--line); }
+  .btn-ghost{ background:transparent; color:var(--ink-soft); font-weight:600; }
+  .btn-danger{ background:transparent; color:var(--danger); border:1.5px solid rgba(214,69,69,.35); }
+  .btn-teal{ background:var(--teal); color:#fff; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn.small{ padding:10px 14px; font-size:13px; width:auto; border-radius:12px;}
+
+  input, textarea{
+    width:100%; border:1.5px solid var(--line); background:var(--surface); color:var(--ink);
+    border-radius:14px; padding:14px 16px; font-family:'Inter'; font-size:15px; outline:none;
+    transition:border-color .15s ease;
+  }
+  input:focus, textarea:focus{ border-color:var(--coral); }
+  label{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:8px; display:block; }
+  .field{ margin-bottom:18px; }
+  .helper{ font-size:12.5px; color:var(--ink-soft); margin-top:8px; line-height:1.5; }
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px; margin-bottom:14px;
+  }
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800;
+    padding:4px 10px; border-radius:100px; text-transform:uppercase; letter-spacing:.05em;
+  }
+  .badge.coral{ background:rgba(255,107,84,.14); color:var(--coral-ink); }
+  .badge.teal{ background:var(--teal-soft); color:var(--teal); }
+  .badge.gray{ background:var(--line); color:var(--ink-soft); }
+
+  .avatar{
+    width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:18px; color:#fff; flex-shrink:0; background:linear-gradient(135deg,var(--coral),#FFB199);
+  }
+  .avatar.lg{ width:88px; height:88px; font-size:30px; }
+
+  /* Bottom nav */
+  .navbar{
+    position:absolute; bottom:0; left:0; right:0; background:var(--surface);
+    border-top:1px solid var(--line); display:flex; padding:10px 10px calc(14px + env(safe-area-inset-bottom));
+    z-index:40;
+  }
+  .navitem{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;
+    color:var(--ink-soft); font-size:10.5px; font-weight:700; padding:6px 0; border-radius:12px;
+  }
+  .navitem.active{ color:var(--coral); }
+  .navitem svg{ width:22px; height:22px; }
+
+  .toast{
+    position:absolute; left:20px; right:20px; bottom:100px; background:var(--ink); color:var(--bg);
+    padding:13px 16px; border-radius:14px; font-size:13.5px; font-weight:600; z-index:80;
+    transform:translateY(120px); opacity:0; transition:all .35s cubic-bezier(.2,.9,.3,1.2);
+    box-shadow:var(--shadow); display:flex; align-items:center; gap:8px;
+  }
+  .toast.show{ transform:translateY(0); opacity:1; }
+
+  .otp-boxes{ display:flex; gap:10px; margin:18px 0; }
+  .otp-boxes input{ text-align:center; font-size:22px; font-weight:700; padding:14px 0; width:100%; }
+
+  .empty{ text-align:center; padding:60px 20px; color:var(--ink-soft); }
+  .empty svg{ margin-bottom:14px; opacity:.5; }
+
+  .switch{ position:relative; width:46px; height:26px; flex-shrink:0; }
+  .switch input{ display:none; }
+  .switch .track{ position:absolute; inset:0; background:var(--line); border-radius:100px; transition:.2s; cursor:pointer; }
+  .switch .thumb{ position:absolute; top:3px; left:3px; width:20px; height:20px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .switch input:checked + .track{ background:var(--coral); }
+  .switch input:checked + .track .thumb{ transform:translateX(20px); }
+
+  .rowbtn{ display:flex; align-items:center; justify-content:space-between; padding:15px 4px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .rowbtn:last-child{ border-bottom:none; }
+  .rowbtn .left{ display:flex; align-items:center; gap:12px; }
+  .rowbtn .meta{ font-size:15px; font-weight:600; }
+  .rowbtn .sub{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+
+  .msg-row{ display:flex; margin-bottom:10px; }
+  .msg-row.me{ justify-content:flex-end; }
+  .bubble{ max-width:74%; padding:11px 15px; border-radius:18px; font-size:14.5px; line-height:1.45; }
+  .msg-row.me .bubble{ background:var(--coral); color:#fff; border-bottom-right-radius:4px; }
+  .msg-row.them .bubble{ background:var(--surface-2); border:1px solid var(--line); border-bottom-left-radius:4px; }
+  .lock-note{ text-align:center; font-size:11.5px; color:var(--ink-soft); margin:10px 0 16px; display:flex; align-items:center; justify-content:center; gap:5px;}
+
+  .kb{ display:flex; gap:10px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:var(--surface); border-top:1px solid var(--line); }
+  .kb input{ flex:1; }
+  .roundbtn{ width:46px; height:46px; border-radius:50%; border:none; background:var(--coral); color:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+
+  .pulse{ animation:pulse 1.8s infinite; }
+  @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(255,107,84,.5);} 70%{ box-shadow:0 0 0 16px rgba(255,107,84,0);} 100%{ box-shadow:0 0 0 0 rgba(255,107,84,0);} }
+  .fadein{ animation:fadein .4s ease both; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  .logo-mark{ width:64px; height:64px; border-radius:20px; background:linear-gradient(135deg,var(--coral),#FFB199); display:flex; align-items:center; justify-content:center; margin-bottom:18px;}
+  a.linklike{ color:var(--coral); font-weight:700; cursor:pointer; }
+  .center-col{ display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .divider{ height:1px; background:var(--line); margin:16px 0; }
+  .warn-box{ background:rgba(214,69,69,.08); border:1px solid rgba(214,69,69,.25); border-radius:14px; padding:14px; font-size:13px; color:var(--danger); }
+  .info-box{ background:var(--teal-soft); border:1px solid rgba(31,138,131,.25); border-radius:14px; padding:14px; font-size:13px; color:var(--teal); }
+
+  .call-avatar{ width:140px; height:140px; border-radius:50%; margin:auto; display:flex; align-items:center; justify-content:center; font-size:46px; font-weight:700; color:#fff; background:linear-gradient(135deg,var(--coral),#FFB199); }
+  .call-controls{ display:flex; justify-content:center; gap:18px; margin-top:auto; }
+  .call-btn{ width:58px; height:58px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="phone" data-theme="light">
+  <div class="notch"></div>
+
+  <!-- SCREEN: Splash / Onboarding -->
+  <div class="screen active" id="scr-onboard">
+    <div class="container center-col" style="justify-content:center; height:100%; padding-top:0;">
+      <div class="logo-mark">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7.5-4.7-10-9.6C.3 7.6 2.4 4 6.1 4c2 0 3.6 1 4.9 2.7C12.3 5 13.9 4 15.9 4 19.6 4 21.7 7.6 22 11.4 19.5 16.3 12 21 12 21z" fill="white" opacity="0.95"/></svg>
+      </div>
+      <h1 class="display" style="font-size:32px; margin:0 0 8px;">Reconnect</h1>
+      <p style="color:var(--ink-soft); font-size:15px; line-height:1.6; margin:0 0 34px;">One respectful message to the people you've lost touch with — never more.</p>
+      <button class="btn btn-primary" onclick="go('scr-phone')">Get started</button>
+      <p class="helper" style="margin-top:18px;">By continuing you agree to consent-based contact only. We never bypass a block.</p>
+    </div>
+  </div>
+
+  <!-- SCREEN: Phone entry -->
+  <div class="screen" id="scr-phone">
+    <div class="topbar"><h2>Sign in</h2></div>
+    <div class="container">
+      <p style="color:var(--ink-soft); font-size:14.5px; margin-top:0;">Enter your phone number. We'll text you a one-time code.</p>
+      <div class="field">
+        <label>Phone number</label>
+        <input type="tel" id="phoneInput" placeholder="+1 (555) 000-0000" value="+1 555-201-4487">
+      </div>
+      <button class="btn btn-primary" onclick="sendOtp()">Send code</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: OTP -->
+  <div class="screen" id="scr-otp">
+    <div class="topbar"><div class="backbtn" onclick="go('scr-phone')">‹</div><h2>Enter code</h2></div>
+    <div class="container">
+      <p style="color:var(--ink-soft); font-size:14.5px; margin-top:0;">We sent a 4-digit code to <b id="otpPhoneEcho" style="color:var(--ink)"></b></p>
+      <div class="otp-boxes">
+        <input maxlength="1" inputmode="numeric" class="otpd" onkeyup="otpNext(this,0)">
+        <input maxlength="1" inputmode="numeric" class="otpd" onkeyup="otpNext(this,1)">
+        <input maxlength="1" inputmode="numeric" class="otpd" onkeyup="otpNext(this,2)">
+        <input maxlength="1" inputmode="numeric" class="otpd" onkeyup="otpNext(this,3)">
+      </div>
+      <p class="helper" id="otpHint">Demo code: 2468</p>
+      <button class="btn btn-primary" onclick="verifyOtp()">Verify &amp; continue</button>
+      <button class="btn btn-ghost" style="margin-top:6px;" onclick="toast('New code sent')">Resend code</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: Profile setup -->
+  <div class="screen" id="scr-profile-setup">
+    <div class="topbar"><h2>Create your profile</h2></div>
+    <div class="container">
+      <div class="center-col" style="margin-bottom:20px;">
+        <div class="avatar lg" id="setupAvatar">Y</div>
+        <a class="linklike" style="font-size:13px; margin-top:10px;">Add photo</a>
+      </div>
+      <div class="field">
+        <label>Full name</label>
+        <input id="setupName" placeholder="Your name" value="Jordan Blake">
+      </div>
+      <div class="field">
+        <label>Short bio</label>
+        <textarea id="setupBio" rows="3" placeholder="A line people will see on your reconnect request">Product designer. Moved to Austin in 2022. Always up for reminiscing about college.</textarea>
+      </div>
+      <button class="btn btn-primary" onclick="finishSetup()">Continue</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: HOME / Requests -->
+  <div class="screen" id="scr-home">
+    <div class="topbar" style="justify-content:space-between;">
+      <div>
+        <div style="font-size:12px; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:.05em;">Reconnect</div>
+        <h2 style="margin-top:2px;">Requests</h2>
+      </div>
+      <div class="avatar" id="homeAvatarBtn" style="cursor:pointer;" onclick="go('scr-settings')">Y</div>
+    </div>
+    <div class="scroll">
+      <div class="container" style="padding-top:6px;">
+
+        <div class="card fadein" style="border-color:var(--coral); background:linear-gradient(135deg, rgba(255,107,84,.06), transparent);">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="badge coral">Incoming</span>
+            <span style="font-size:11.5px; color:var(--ink-soft);">2h ago</span>
+          </div>
+          <div style="display:flex; gap:12px; margin-top:12px;">
+            <div class="avatar" style="background:linear-gradient(135deg,#1F8A83,#4FC5BC);">M</div>
+            <div style="flex:1;">
+              <div style="font-weight:700; font-size:15.5px;">Maya Chen</div>
+              <div class="sub" style="color:var(--ink-soft); font-size:12.5px; margin-top:1px;">3 mutual contacts · college roommate?</div>
+              <div style="font-size:13.5px; margin-top:8px; line-height:1.5;">"Hey! Found your number in an old group chat — would love to catch up sometime. Hope you're doing well!"</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <button class="btn btn-primary small" style="flex:1;" onclick="go('scr-incoming')">Review</button>
+          </div>
+        </div>
+
+        <h3 style="font-size:14px; margin:22px 0 10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;">Active chats</h3>
+        <div class="card" style="cursor:pointer; padding:14px;" onclick="go('scr-chat')">
+          <div class="rowbtn" style="border:none; padding:0;">
+            <div class="left">
+              <div class="avatar" style="background:linear-gradient(135deg,#6C63FF,#B39DFF);">D</div>
+              <div>
+                <div class="meta">Devon Ruiz</div>
+                <div class="sub">Temporary chat · expires in 6d</div>
+              </div>
+            </div>
+            <span class="badge teal">Active</span>
+          </div>
+        </div>
+
+        <h3 style="font-size:14px; margin:22px 0 10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;">Sent</h3>
+        <div class="card" style="padding:14px;">
+          <div class="rowbtn" style="border:none; padding:0;">
+            <div class="left">
+              <div class="avatar" style="background:linear-gradient(135deg,#999,#ccc);">P</div>
+              <div>
+                <div class="meta">Priya Nair</div>
+                <div class="sub">Pending · sent 3d ago</div>
+              </div>
+            </div>
+            <span class="badge gray">Waiting</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="navbar">
+      <div class="navitem active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7.5-4.7-10-9.6C.3 7.6 2.4 4 6.1 4c2 0 3.6 1 4.9 2.7C12.3 5 13.9 4 15.9 4 19.6 4 21.7 7.6 22 11.4 19.5 16.3 12 21 12 21z"/></svg>Requests</div>
+      <div class="navitem" onclick="go('scr-discover')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Find</div>
+      <div class="navitem" onclick="go('scr-chat')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Chats</div>
+      <div class="navitem" onclick="go('scr-settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Profile</div>
+    </div>
+  </div>
+
+  <!-- SCREEN: Discover / send request -->
+  <div class="screen" id="scr-discover">
+    <div class="topbar"><h2>Find someone</h2></div>
+    <div class="container">
+      <div class="field">
+        <label>Phone number or synced contact</label>
+        <input id="discoverInput" placeholder="+1 555-822-9910" oninput="checkDiscover()">
+      </div>
+      <div id="discoverResult"></div>
+      <div class="info-box" style="margin-top:10px;">
+        <b>Privacy note:</b> we only match numbers already in your device contacts or entered manually — we never scan your address book without permission, and blocked users never appear here.
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: Send request -->
+  <div class="screen" id="scr-send-request">
+    <div class="topbar"><div class="backbtn" onclick="go('scr-discover')">‹</div><h2>New request</h2></div>
+    <div class="container">
+      <div class="card">
+        <div style="display:flex; gap:12px; align-items:center;">
+          <div class="avatar" style="background:linear-gradient(135deg,#E85D75,#F4A6B5);">R</div>
+          <div>
+            <div style="font-weight:700; font-size:15.5px;">Rhea Kapoor</div>
+            <div class="sub" style="color:var(--ink-soft); font-size:12.5px;">2 mutual contacts</div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Why are you reaching out? (shown to them)</label>
+        <textarea id="requestReason" rows="4" placeholder="A short, genuine reason">Hi Rhea — we worked together at Kansai Nerolac years back. Been thinking about that team lately and wanted to say hi!</textarea>
+      </div>
+      <div class="warn-box">You get <b>one</b> request to this person. If they decline, you can't send another for 90 days.</div>
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="sendRequest()">Send reconnect request</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: Incoming request detail -->
+  <div class="screen" id="scr-incoming">
+    <div class="topbar"><div class="backbtn" onclick="go('scr-home')">‹</div><h2>Request</h2></div>
+    <div class="scroll">
+    <div class="container">
+      <div class="center-col" style="margin:6px 0 18px;">
+        <div class="avatar lg" style="background:linear-gradient(135deg,#1F8A83,#4FC5BC);">M</div>
+        <h3 style="margin:12px 0 2px;">Maya Chen</h3>
+        <div class="sub" style="color:var(--ink-soft); font-size:13px;">+1 555-••• verified · joined 2024</div>
+      </div>
+      <div class="card">
+        <label style="margin-bottom:6px;">Their message</label>
+        <p style="margin:0; font-size:14.5px; line-height:1.55;">"Hey! Found your number in an old group chat — would love to catch up sometime. Hope you're doing well!"</p>
+      </div>
+      <div class="card">
+        <label style="margin-bottom:8px;">Mutual contacts</label>
+        <div style="display:flex; gap:-8px;">
+          <div class="avatar" style="width:34px;height:34px;font-size:12px;background:#ddd;color:#555;">SK</div>
+          <div class="avatar" style="width:34px;height:34px;font-size:12px;background:#ddd;color:#555; margin-left:-10px;">TL</div>
+          <div class="avatar" style="width:34px;height:34px;font-size:12px;background:#ddd;color:#555; margin-left:-10px;">+1</div>
+        </div>
+      </div>
+      <p class="helper">Accepting opens a temporary chat. You choose if and when to share your real number. Declining is permanent for this sender.</p>
+    </div>
+    </div>
+    <div class="container" style="padding-top:0; padding-bottom:calc(20px + env(safe-area-inset-bottom));">
+      <button class="btn btn-primary" onclick="acceptRequest()">Accept</button>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <button class="btn btn-secondary" onclick="toast('Request ignored — you can decide later')">Ignore for now</button>
+        <button class="btn btn-danger" onclick="go('scr-decline-confirm')">Decline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: Decline confirm -->
+  <div class="screen" id="scr-decline-confirm">
+    <div class="container center-col" style="justify-content:center; height:100%;">
+      <div class="warn-box" style="text-align:left; margin-bottom:22px;">
+        <b>Permanently decline Maya Chen?</b>
+        <p style="margin:8px 0 0;">This is final. She will not be notified of the reason, and cannot send another request to you — ever. This also blocks future rediscovery in search.</p>
+      </div>
+      <button class="btn btn-danger" style="border:1.5px solid var(--danger); background:var(--danger); color:#fff;" onclick="declineRequest()">Yes, permanently decline</button>
+      <button class="btn btn-ghost" onclick="go('scr-incoming')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: Chat -->
+  <div class="screen" id="scr-chat">
+    <div class="topbar" style="justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="backbtn" onclick="go('scr-home')">‹</div>
+        <div class="avatar" style="width:38px;height:38px;font-size:14px;background:linear-gradient(135deg,#6C63FF,#B39DFF);">D</div>
+        <div>
+          <div style="font-weight:700; font-size:15px;">Devon Ruiz</div>
+          <div style="font-size:11px; color:var(--ink-soft);">Temporary · 6 days left</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <div class="backbtn" onclick="startCall('voice')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3-8.7A2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .3 2 .7 3a2 2 0 01-.4 2.1L8 10.1a16 16 0 006 6l1.3-1.4a2 2 0 012.1-.4c1 .4 2 .6 3 .7a2 2 0 011.6 2z"/></svg>
+        </div>
+        <div class="backbtn" onclick="startCall('video')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </div>
+        <div class="backbtn" onclick="go('scr-chat-options')">⋮</div>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="container">
+        <div class="lock-note"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg> End-to-end encrypted · numbers stay hidden</div>
+        <div class="msg-row them"><div class="bubble">So good to hear from you! It's been way too long.</div></div>
+        <div class="msg-row me"><div class="bubble">Right?? I still think about that road trip we did senior year 😂</div></div>
+        <div class="msg-row them"><div class="bubble">The one where the AC broke in Arizona? Never forgetting that.</div></div>
+        <div class="msg-row me"><div class="bubble">We should catch up properly sometime, maybe a call?</div></div>
+        <div id="chatExtra"></div>
+      </div>
+    </div>
+    <div class="kb">
+      <input id="chatInput" placeholder="Message" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="roundbtn" onclick="sendChat()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCREEN: Chat options -->
+  <div class="screen" id="scr-chat-options">
+    <div class="topbar"><div class="backbtn" onclick="go('scr-chat')">‹</div><h2>Chat options</h2></div>
+    <div class="container">
+      <div class="card" style="padding:6px 14px;">
+        <div class="rowbtn" onclick="toast('Number sharing request sent to Devon')">
+          <div class="meta">Offer to exchange numbers</div><span>›</span>
+        </div>
+        <div class="rowbtn" onclick="toast('Chat muted')">
+          <div class="meta">Mute notifications</div><span>›</span>
+        </div>
+        <div class="rowbtn" onclick="go('scr-report')">
+          <div class="meta" style="color:var(--danger);">Report Devon</div><span>›</span>
+        </div>
+        <div class="rowbtn" onclick="confirmBlock()">
+          <div class="meta" style="color:var(--danger);">Block &amp; end chat</div><span>›</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: Report -->
+  <div class="screen" id="scr-report">
+    <div class="topbar"><div class="backbtn" onclick="go('scr-chat-options')">‹</div><h2>Report</h2></div>
+    <div class="container">
+      <p style="color:var(--ink-soft); font-size:14px; margin-top:0;">Your report is reviewed by our moderation team within 24 hours.</p>
+      <div class="card" style="padding:6px 14px;">
+        <div class="rowbtn" onclick="fileReport('Harassment')"><div class="meta">Harassment or threats</div><span>›</span></div>
+        <div class="rowbtn" onclick="fileReport('Spam')"><div class="meta">Spam or scam</div><span>›</span></div>
+        <div class="rowbtn" onclick="fileReport('Impersonation')"><div class="meta">Impersonation</div><span>›</span></div>
+        <div class="rowbtn" onclick="fileReport('Other')"><div class="meta">Something else</div><span>›</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: Call -->
+  <div class="screen" id="scr-call">
+    <div class="container" style="display:flex; flex-direction:column; height:100%; padding-bottom:calc(30px + env(safe-area-inset-bottom));">
+      <div style="text-align:center; margin-top:30px;">
+        <div class="badge teal" id="callTypeBadge">Voice call</div>
+        <h2 style="margin:16px 0 4px;">Devon Ruiz</h2>
+        <div id="callStatus" style="color:var(--ink-soft); font-size:14px;">Ringing…</div>
+      </div>
+      <div class="call-avatar pulse" style="margin-top:50px;">D</div>
+      <div class="call-controls">
+        <button class="call-btn" id="muteBtn" style="background:var(--surface-2); color:var(--ink);" onclick="toast('Microphone muted')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4"/></svg>
+        </button>
+        <button class="call-btn" style="background:var(--danger); color:#fff; width:66px; height:66px;" onclick="endCall()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M21 15.5a1 1 0 01-1 1c-8.3 0-15-6.7-15-15a1 1 0 011-1h3.5a1 1 0 011 .9c.1 1.2.4 2.4.8 3.5a1 1 0 01-.2 1.1L9 8.1a12.3 12.3 0 006.9 6.9l1.1-1.1a1 1 0 011.1-.2c1.1.4 2.3.7 3.5.8a1 1 0 01.9 1v3.5z" transform="rotate(135 12 12)"/></svg>
+        </button>
+        <button class="call-btn" style="background:var(--surface-2); color:var(--ink);" onclick="toast('Speaker on')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19 12a4.5 4.5 0 00-2.5-4"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: Settings -->
+  <div class="screen" id="scr-settings">
+    <div class="topbar"><h2>Profile</h2></div>
+    <div class="scroll">
+      <div class="container">
+        <div class="center-col" style="margin-bottom:20px;">
+          <div class="avatar lg" id="settingsAvatar">Y</div>
+          <h3 style="margin:12px 0 2px;" id="settingsName">Jordan Blake</h3>
+          <div class="sub" style="color:var(--ink-soft); font-size:13px;">+1 555-201-4487</div>
+        </div>
+
+        <div class="card" style="padding:6px 14px;">
+          <div class="rowbtn">
+            <div class="left"><span style="font-size:14.5px;">Dark mode</span></div>
+            <label class="switch"><input type="checkbox" id="darkToggle" onchange="toggleDark()"><span class="track"><span class="thumb"></span></span></label>
+          </div>
+          <div class="rowbtn" onclick="toast('Editing profile')">
+            <div class="meta">Edit profile</div><span>›</span>
+          </div>
+          <div class="rowbtn" onclick="toast('2 devices signed in')">
+            <div class="meta">Manage devices</div>
+            <span class="badge gray">2 active</span>
+          </div>
+        </div>
+
+        <h3 style="font-size:14px; margin:22px 0 10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;">Privacy &amp; safety</h3>
+        <div class="card" style="padding:6px 14px;">
+          <div class="rowbtn" onclick="go('scr-blocked')">
+            <div class="meta">Blocked &amp; declined</div><span>›</span>
+          </div>
+          <div class="rowbtn">
+            <div class="left"><span style="font-size:14.5px;">Discoverable by contacts</span></div>
+            <label class="switch"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label>
+          </div>
+          <div class="rowbtn" onclick="toast('Data export requested — GDPR Art.15')">
+            <div class="meta">Export my data</div><span>›</span>
+          </div>
+          <div class="rowbtn" onclick="toast('Account deletion requested')">
+            <div class="meta" style="color:var(--danger);">Delete account</div><span>›</span>
+          </div>
+        </div>
+
+        <div class="info-box" style="margin-top:16px;">
+          Rate limit: <b id="rateLimitText">2 of 5</b> requests sent this month. Resets in 18 days.
+        </div>
+      </div>
+    </div>
+    <div class="navbar">
+      <div class="navitem" onclick="go('scr-home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7.5-4.7-10-9.6C.3 7.6 2.4 4 6.1 4c2 0 3.6 1 4.9 2.7C12.3 5 13.9 4 15.9 4 19.6 4 21.7 7.6 22 11.4 19.5 16.3 12 21 12 21z"/></svg>Requests</div>
+      <div class="navitem" onclick="go('scr-discover')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Find</div>
+      <div class="navitem" onclick="go('scr-chat')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Chats</div>
+      <div class="navitem active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Profile</div>
+    </div>
+  </div>
+
+  <!-- SCREEN: Blocked list -->
+  <div class="screen" id="scr-blocked">
+    <div class="topbar"><div class="backbtn" onclick="go('scr-settings')">‹</div><h2>Blocked &amp; declined</h2></div>
+    <div class="container">
+      <div class="card" style="padding:6px 14px;">
+        <div class="rowbtn">
+          <div class="left"><div class="avatar" style="width:34px;height:34px;font-size:12px;background:#ccc;">K</div><div><div class="meta">Kevin Ortiz</div><div class="sub">Declined 12 days ago</div></div></div>
+          <span class="badge gray">78d left</span>
+        </div>
+      </div>
+      <p class="helper">People here can't send you a new request until the cooldown ends, or ever again if you chose "permanently decline." Blocking is always enforced on our side and never bypasses your OS-level contact blocks.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------------------------------------------------------
+   RECONNECT — front-end interactive prototype
+   All state is local (in-memory / localStorage) to simulate the
+   backend described in the accompanying architecture docs.
+   No real network calls, no real OTP/SMS, no real WebRTC — this
+   file exists to demonstrate flow, UX and guardrails only.
+--------------------------------------------------------------- */
+
+const state = {
+  theme: localStorage.getItem('rc_theme') || 'light',
+  profile: null,
+  requestsSentThisMonth: 2,
+  requestsLimit: 5
+};
+
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById(id).scrollTop = 0;
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- Auth: phone + OTP (simulated) ---------- */
+let generatedOtp = '2468';
+function sendOtp(){
+  const phone = document.getElementById('phoneInput').value.trim();
+  if(phone.replace(/\D/g,'').length < 7){ toast('Enter a valid phone number'); return; }
+  document.getElementById('otpPhoneEcho').textContent = phone;
+  toast('Code sent via SMS');
+  go('scr-otp');
+  setTimeout(()=>document.querySelector('.otpd').focus(), 300);
+}
+function otpNext(el, idx){
+  const boxes = document.querySelectorAll('.otpd');
+  if(el.value.length === 1 && idx < 3) boxes[idx+1].focus();
+}
+function verifyOtp(){
+  const boxes = document.querySelectorAll('.otpd');
+  const code = Array.from(boxes).map(b=>b.value).join('');
+  if(code.length < 4){ toast('Enter all 4 digits'); return; }
+  if(code !== generatedOtp){ toast('Incorrect code — try ' + generatedOtp + ' for this demo'); return; }
+  toast('Phone verified');
+  go('scr-profile-setup');
+}
+
+/* ---------- Profile setup ---------- */
+function finishSetup(){
+  const name = document.getElementById('setupName').value.trim() || 'You';
+  const bio = document.getElementById('setupBio').value.trim();
+  state.profile = { name, bio };
+  const initial = name.trim()[0].toUpperCase();
+  document.getElementById('homeAvatarBtn').textContent = initial;
+  document.getElementById('settingsAvatar').textContent = initial;
+  document.getElementById('settingsName').textContent = name;
+  toast('Profile created');
+  go('scr-home');
+}
+
+/* ---------- Discover / send request ---------- */
+function checkDiscover(){
+  const val = document.getElementById('discoverInput').value.trim();
+  const box = document.getElementById('discoverResult');
+  if(val.replace(/\D/g,'').length < 7){ box.innerHTML=''; return; }
+  box.innerHTML = `
+    <div class="card fadein" style="cursor:pointer;" onclick="go('scr-send-request')">
+      <div style="display:flex; gap:12px; align-items:center;">
+        <div class="avatar" style="background:linear-gradient(135deg,#E85D75,#F4A6B5);">R</div>
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:15px;">Rhea Kapoor</div>
+          <div class="sub" style="color:var(--ink-soft); font-size:12.5px;">On Reconnect · 2 mutual contacts</div>
+        </div>
+        <span style="color:var(--coral); font-weight:700;">›</span>
+      </div>
+    </div>`;
+}
+function sendRequest(){
+  if(state.requestsSentThisMonth >= state.requestsLimit){
+    toast('Monthly request limit reached — abuse protection');
+    return;
+  }
+  const reason = document.getElementById('requestReason').value.trim();
+  if(!reason){ toast('Add a short reason before sending'); return; }
+  state.requestsSentThisMonth++;
+  document.getElementById('rateLimitText').textContent = state.requestsSentThisMonth + ' of ' + state.requestsLimit;
+  toast('Reconnect request sent to Rhea');
+  go('scr-home');
+}
+
+/* ---------- Incoming request decision ---------- */
+function acceptRequest(){
+  toast('Request accepted — temporary chat opened');
+  go('scr-home');
+}
+function declineRequest(){
+  toast('Maya permanently declined — she can never re-request');
+  go('scr-home');
+}
+
+/* ---------- Chat ---------- */
+function sendChat(){
+  const input = document.getElementById('chatInput');
+  const val = input.value.trim();
+  if(!val) return;
+  const wrap = document.getElementById('chatExtra');
+  const row = document.createElement('div');
+  row.className = 'msg-row me fadein';
+  row.innerHTML = `<div class="bubble">${escapeHtml(val)}</div>`;
+  wrap.appendChild(row);
+  input.value = '';
+  document.querySelector('#scr-chat .scroll').scrollTop = 9999;
+  setTimeout(()=>{
+    const reply = document.createElement('div');
+    reply.className = 'msg-row them fadein';
+    reply.innerHTML = `<div class="bubble">Sounds great — let's find a time 🙂</div>`;
+    wrap.appendChild(reply);
+    document.querySelector('#scr-chat .scroll').scrollTop = 9999;
+  }, 900);
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+/* ---------- Calling (UI simulation only — real impl is WebRTC, see backend docs) ---------- */
+let callTimer;
+function startCall(type){
+  document.getElementById('callTypeBadge').textContent = type === 'video' ? 'Video call' : 'Voice call';
+  document.getElementById('callStatus').textContent = 'Ringing…';
+  go('scr-call');
+  setTimeout(()=>{
+    document.getElementById('callStatus').textContent = '00:01';
+    let secs = 1;
+    callTimer = setInterval(()=>{
+      secs++;
+      const m = String(Math.floor(secs/60)).padStart(2,'0');
+      const s = String(secs%60).padStart(2,'0');
+      document.getElementById('callStatus').textContent = `${m}:${s}`;
+    }, 1000);
+  }, 1600);
+}
+function endCall(){
+  clearInterval(callTimer);
+  toast('Call ended');
+  go('scr-chat');
+}
+
+/* ---------- Report / Block ---------- */
+function fileReport(reason){
+  toast('Reported for "' + reason + '" — moderation team notified');
+  go('scr-chat');
+}
+function confirmBlock(){
+  if(confirm('Block Devon Ruiz? This ends the chat immediately and they can never contact you again on Reconnect.')){
+    toast('Devon blocked and chat ended');
+    go('scr-home');
+  }
+}
+
+/* ---------- Settings / dark mode ---------- */
+function toggleDark(){
+  const checked = document.getElementById('darkToggle').checked;
+  state.theme = checked ? 'dark' : 'light';
+  document.getElementById('phone').setAttribute('data-theme', state.theme);
+  localStorage.setItem('rc_theme', state.theme);
+}
+(function initTheme(){
+  document.getElementById('phone').setAttribute('data-theme', state.theme);
+  document.getElementById('darkToggle').checked = state.theme === 'dark';
+})();
+</script>
+</body>
+</html>
